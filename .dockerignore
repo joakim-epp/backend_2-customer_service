@@ -1,0 +1,10 @@
+target/
+.git/
+.idea/
+*.iml
+docs/
+k8s/
+.env
+frontend/node_modules/
+frontend/dist/
+src/main/resources/static/
