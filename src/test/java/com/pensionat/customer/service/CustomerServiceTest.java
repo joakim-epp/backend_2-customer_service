@@ -33,7 +33,7 @@ class CustomerServiceTest {
         anna.setId(1L);
         anna.setFirstName("Anna");
         anna.setLastName("Svensson");
-        when(customerRepository.findById(1L)).thenReturn(Optional.of(anna));
+        when(customerRepository.findByIdAndDeletedAtIsNull(1L)).thenReturn(Optional.of(anna));
 
         CustomerResponse response = customerService.findById(1L);
 
@@ -43,7 +43,7 @@ class CustomerServiceTest {
 
     @Test
     void findByIdUnknownIdThrowsNotFound() {
-        when(customerRepository.findById(99L)).thenReturn(Optional.empty());
+        when(customerRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> customerService.findById(99L))
                 .isInstanceOf(CustomerNotFoundException.class);
@@ -51,7 +51,7 @@ class CustomerServiceTest {
 
     @Test
     void updateUnknownIdThrowsNotFound() {
-        when(customerRepository.findById(99L)).thenReturn(Optional.empty());
+        when(customerRepository.findByIdAndDeletedAtIsNull(99L)).thenReturn(Optional.empty());
 
         CustomerRequest request = new CustomerRequest("Anna", "Svensson", null, null, null);
 

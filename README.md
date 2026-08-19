@@ -121,10 +121,19 @@ Checklista: managed Postgres, `SPRING_DATASOURCE_*` mot den, `JWT_SECRET` och `A
 som secrets, `BOOKING_SERVICE_URL` mot bokningstjänstens publika adress. Deploya från
 `Dockerfile`, inte från en buildpack, frontenden byggs i node-steget.
 
-## Känd begränsning
+## Radering och en känd begränsning
 
-Det finns en race condition i båda riktningarna: en bokning kan skapas efter att antalet
+Radering är mjuk: `deletedAt` sätts, raden ligger kvar. Kunden försvinner ur `GET
+/api/customers` och `GET /api/customers/{id}` svarar 404, men batch-uppslagningen
+`?ids=` returnerar den fortfarande med `"deleted": true`.
+
+Skälet är en race condition som inte går att stänga: en bokning kan skapas efter att antalet
 hämtats men innan kunden raderas, och en kund kan raderas efter bokningstjänstens kundkontroll
-men innan bokningen sparas. Ingen läsbaserad lösning eliminerar det — det kräver lås,
-reservation eller att en tjänst samordnar både kontroll och skrivning. Risken är dokumenterad
-och accepterad i den här versionen.
+men innan bokningen sparas. Invarianten spänner över två databaser, så inga atomära operationer
+eller lås i en enskild tjänst räcker — det skulle kräva reservation eller en samordnande tjänst.
+
+Mjuk radering stänger inte racet, den gör följden ofarlig: en bokning som skapas i tidsfönstret
+blir aldrig föräldralös, eftersom namnet fortfarande går att slå upp.
+
+Priset är att "radera" inte betyder att uppgifterna är borta ur databasen. Ska de bort på
+riktigt måste raden tömmas eller anonymiseras.

@@ -2,6 +2,8 @@ package com.pensionat.customer.model;
 
 import jakarta.persistence.*;
 
+import java.time.Instant;
+
 @Entity
 @Table(name = "customers")
 public class Customer {
@@ -24,6 +26,12 @@ public class Customer {
 
     @Column(length = 200)
     private String address;
+
+    /**
+     * Null means the customer is active. A soft delete keeps the row so that a booking created
+     * in the race window between the booking-count check and the delete can still resolve a name.
+     */
+    private Instant deletedAt;
 
     public Long getId() {
         return id;
@@ -71,5 +79,17 @@ public class Customer {
 
     public void setAddress(String address) {
         this.address = address;
+    }
+
+    public Instant getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(Instant deletedAt) {
+        this.deletedAt = deletedAt;
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
     }
 }

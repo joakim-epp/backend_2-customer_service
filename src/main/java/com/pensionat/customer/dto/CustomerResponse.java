@@ -6,5 +6,6 @@ public record CustomerResponse(
         String lastName,
         String email,
         String phone,
-        String address
+        String address,
+        boolean deleted
 ) {}

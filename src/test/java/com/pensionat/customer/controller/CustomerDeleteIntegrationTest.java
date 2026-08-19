@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -53,7 +54,47 @@ class CustomerDeleteIntegrationTest {
         mockMvc.perform(delete("/api/customers/" + id).with(jwt()))
                 .andExpect(status().isNoContent());
 
-        assertThat(customerRepository.findById(id)).isEmpty();
+        // Soft delete: the row survives so bookings created in the race window can still
+        // resolve a name, but the customer is gone from every active-customer view.
+        assertThat(customerRepository.findById(id)).get()
+                .satisfies(c -> assertThat(c.getDeletedAt()).isNotNull());
+        assertThat(customerRepository.findByDeletedAtIsNull()).isEmpty();
+    }
+
+    @Test
+    void deletedCustomerIsHiddenFromGetAndList() throws Exception {
+        when(bookingClient.countActiveBookings(id)).thenReturn(0L);
+        mockMvc.perform(delete("/api/customers/" + id).with(jwt())).andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/customers/" + id).with(jwt()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("CUSTOMER_NOT_FOUND"));
+
+        mockMvc.perform(get("/api/customers").with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void deletedCustomerIsStillReachableThroughBatchLookup() throws Exception {
+        when(bookingClient.countActiveBookings(id)).thenReturn(0L);
+        mockMvc.perform(delete("/api/customers/" + id).with(jwt())).andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/api/customers").param("ids", String.valueOf(id)).with(jwt()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].firstName").value("Anna"))
+                .andExpect(jsonPath("$[0].deleted").value(true));
+    }
+
+    @Test
+    void deletingAnAlreadyDeletedCustomerReturns404() throws Exception {
+        when(bookingClient.countActiveBookings(id)).thenReturn(0L);
+        mockMvc.perform(delete("/api/customers/" + id).with(jwt())).andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/api/customers/" + id).with(jwt()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.errorCode").value("CUSTOMER_NOT_FOUND"));
     }
 
     @Test
