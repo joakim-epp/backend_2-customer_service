@@ -39,8 +39,6 @@ export default function CustomerForm() {
       // The API reports field-level problems in errors[]; anything else is a page-level error.
       if (e.errorCode === 'VALIDATION_FAILED' && Array.isArray(e.problem.errors)) {
         setFieldErrors(Object.fromEntries(e.problem.errors.map((f) => [f.field, f.message])))
-      } else if (e.status === 401) {
-        navigate('/login', { replace: true })
       } else {
         setError(e.message)
       }

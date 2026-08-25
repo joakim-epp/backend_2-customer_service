@@ -1,4 +1,5 @@
 const TOKEN_KEY = 'customer-service-token'
+const LOGIN_PATH = '/api/auth/login'
 
 export const getToken = () => localStorage.getItem(TOKEN_KEY)
 export const setToken = (token) => localStorage.setItem(TOKEN_KEY, token)
@@ -28,8 +29,11 @@ async function request(path, options = {}) {
     }
   })
 
+  // Every 401 means the same thing to every caller: the token is gone or stale, start over.
+  // Except on login itself, where 401 is wrong credentials and the form shows the message.
   if (response.status === 401) {
     clearToken()
+    if (path !== LOGIN_PATH) location.assign('/login')
   }
 
   if (!response.ok) {
@@ -46,7 +50,7 @@ async function request(path, options = {}) {
 }
 
 export const login = async (username, password) => {
-  const { token } = await request('/api/auth/login', {
+  const { token } = await request(LOGIN_PATH, {
     method: 'POST',
     body: JSON.stringify({ username, password })
   })
