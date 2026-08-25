@@ -107,6 +107,20 @@ class CustomerControllerIntegrationTest {
     }
 
     @Test
+    void blankIdInListReturns400() throws Exception {
+        mockMvc.perform(get("/api/customers").param("ids", "1,,2").with(jwt()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST"));
+    }
+
+    @Test
+    void negativeIdReturns400() throws Exception {
+        mockMvc.perform(get("/api/customers").param("ids", "-1").with(jwt()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("INVALID_REQUEST"));
+    }
+
+    @Test
     void moreThan100IdsReturns400() throws Exception {
         String ids = java.util.stream.IntStream.rangeClosed(1, 101)
                 .mapToObj(String::valueOf)

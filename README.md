@@ -24,7 +24,7 @@ Applikationen på <http://localhost:8080>, Swagger UI på
 <http://localhost:8080/swagger-ui/index.html>. Logga in med `admin` och lösenordet ur `.env`.
 
 `JWT_SECRET` måste vara **identisk** i alla tre tjänsterna, annars underkänns varandras tokens.
-Dela den utanför repot `.env` är gitignorerad.
+Dela den utanför repot, `.env` är gitignorerad.
 
 ### Utveckling
 
@@ -42,7 +42,7 @@ behövs. Backend ensamt serverar ingen frontend, bundlen byggs bara i Docker.
 JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw test
 ```
 
-28 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
+32 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
 
 Bokningstjänsten stubbas med `MockRestServiceServer` i `BookingClientTest` och med
 `@MockitoBean` i `CustomerDeleteIntegrationTest`.
@@ -130,7 +130,7 @@ Radering är mjuk: `deletedAt` sätts, raden ligger kvar. Kunden försvinner ur 
 Skälet är en race condition som inte går att stänga: en bokning kan skapas efter att antalet
 hämtats men innan kunden raderas, och en kund kan raderas efter bokningstjänstens kundkontroll
 men innan bokningen sparas. Invarianten spänner över två databaser, så inga atomära operationer
-eller lås i en enskild tjänst räcker — det skulle kräva reservation eller en samordnande tjänst.
+eller lås i en enskild tjänst räcker. Det skulle kräva reservation eller en samordnande tjänst.
 
 Mjuk radering stänger inte racet, den gör följden ofarlig: en bokning som skapas i tidsfönstret
 blir aldrig föräldralös, eftersom namnet fortfarande går att slå upp.

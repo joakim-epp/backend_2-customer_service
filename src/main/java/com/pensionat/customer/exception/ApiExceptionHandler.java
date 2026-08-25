@@ -1,6 +1,7 @@
 package com.pensionat.customer.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -32,10 +33,9 @@ public class ApiExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler({InvalidRequestException.class, MethodArgumentTypeMismatchException.class})
-    ProblemDetail invalidRequest(Exception e, HttpServletRequest request) {
-        return problem(HttpStatus.BAD_REQUEST, "Invalid request",
-                e instanceof InvalidRequestException ? e.getMessage() : "Invalid parameter",
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, ConstraintViolationException.class})
+    ProblemDetail invalidRequest(HttpServletRequest request) {
+        return problem(HttpStatus.BAD_REQUEST, "Invalid request", "Invalid parameter",
                 "INVALID_REQUEST", "/problems/invalid-request", request);
     }
 

@@ -2,22 +2,23 @@ package com.pensionat.customer.controller;
 
 import com.pensionat.customer.dto.CustomerRequest;
 import com.pensionat.customer.dto.CustomerResponse;
-import com.pensionat.customer.exception.InvalidRequestException;
 import com.pensionat.customer.service.CustomerService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 
 @RestController
+@Validated
 @RequestMapping("/api/customers")
 public class CustomerController {
-
-    private static final int MAX_IDS = 100;
 
     private final CustomerService customerService;
 
@@ -26,13 +27,14 @@ public class CustomerController {
     }
 
     @GetMapping
-    public List<CustomerResponse> list(@RequestParam(required = false) String ids) {
-        return ids == null ? customerService.findAll() : customerService.findByIds(parseIds(ids));
+    public List<CustomerResponse> list(
+            @RequestParam(required = false) @Size(min = 1, max = 100) List<@NotNull @Positive Long> ids) {
+        return ids == null ? customerService.findAll() : customerService.findByIds(ids);
     }
 
     @GetMapping("/{id}")
     public CustomerResponse findById(@PathVariable Long id) {
-        return customerService.findById(validateId(id));
+        return customerService.findById(id);
     }
 
     @PostMapping
@@ -47,43 +49,12 @@ public class CustomerController {
 
     @PutMapping("/{id}")
     public CustomerResponse update(@PathVariable Long id, @Valid @RequestBody CustomerRequest request) {
-        return customerService.update(validateId(id), request);
+        return customerService.update(id, request);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        customerService.delete(validateId(id));
+        customerService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    private Long validateId(Long id) {
-        if (id <= 0) {
-            throw new InvalidRequestException("Id must be a positive number");
-        }
-        return id;
-    }
-
-    private List<Long> parseIds(String ids) {
-        String[] parts = ids.split(",", -1);
-        if (parts.length > MAX_IDS) {
-            throw new InvalidRequestException("At most " + MAX_IDS + " ids per request");
-        }
-        List<Long> result = new ArrayList<>();
-        for (String part : parts) {
-            String trimmed = part.trim();
-            if (trimmed.isEmpty()) {
-                throw new InvalidRequestException("The ids parameter must not contain empty values");
-            }
-            try {
-                long value = Long.parseLong(trimmed);
-                if (value <= 0) {
-                    throw new InvalidRequestException("Id must be a positive number: " + trimmed);
-                }
-                result.add(value);
-            } catch (NumberFormatException e) {
-                throw new InvalidRequestException("Invalid id: " + trimmed);
-            }
-        }
-        return result;
     }
 }
