@@ -24,7 +24,7 @@ Applikationen på <http://localhost:8080>, Swagger UI på
 <http://localhost:8080/swagger-ui/index.html>. Logga in med `admin` och lösenordet ur `.env`.
 
 `JWT_SECRET` måste vara **identisk** i alla tre tjänsterna, annars underkänns varandras tokens.
-Dela den utanför repot `.env` är gitignorerad.
+Dela den utanför repot, `.env` är gitignorerad.
 
 ### Utveckling
 
@@ -42,7 +42,7 @@ behövs. Backend ensamt serverar ingen frontend, bundlen byggs bara i Docker.
 JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw test
 ```
 
-28 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
+36 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
 
 Bokningstjänsten stubbas med `MockRestServiceServer` i `BookingClientTest` och med
 `@MockitoBean` i `CustomerDeleteIntegrationTest`.
@@ -57,9 +57,12 @@ Alla endpoints utom `POST /api/auth/login` kräver `Authorization: Bearer <token
 | GET | `/api/customers` | 200 |
 | GET | `/api/customers?ids=1,2,3` | 200 · 400 |
 | GET | `/api/customers/{id}` | 200 · 400 · 404 |
-| POST | `/api/customers` | 201 + `Location` · 400 |
-| PUT | `/api/customers/{id}` | 200 · 400 · 404 |
+| POST | `/api/customers` | 201 + `Location` · 400 · 409 |
+| PUT | `/api/customers/{id}` | 200 · 400 · 404 · 409 |
 | DELETE | `/api/customers/{id}` | 204 · 400 · 404 · 409 · 503 |
+
+E-post är valfritt, men två aktiva kunder får inte dela adress: en dubblett ger 409
+`EMAIL_ALREADY_USED`, oavsett versaler. Adressen blir ledig igen när kunden raderas.
 
 Fel returneras som `application/problem+json` med ett maskinläsbart `errorCode`:
 
@@ -130,7 +133,7 @@ Radering är mjuk: `deletedAt` sätts, raden ligger kvar. Kunden försvinner ur 
 Skälet är en race condition som inte går att stänga: en bokning kan skapas efter att antalet
 hämtats men innan kunden raderas, och en kund kan raderas efter bokningstjänstens kundkontroll
 men innan bokningen sparas. Invarianten spänner över två databaser, så inga atomära operationer
-eller lås i en enskild tjänst räcker — det skulle kräva reservation eller en samordnande tjänst.
+eller lås i en enskild tjänst räcker. Det skulle kräva reservation eller en samordnande tjänst.
 
 Mjuk radering stänger inte racet, den gör följden ofarlig: en bokning som skapas i tidsfönstret
 blir aldrig föräldralös, eftersom namnet fortfarande går att slå upp.

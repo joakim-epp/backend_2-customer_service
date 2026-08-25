@@ -34,11 +34,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/login").permitAll()
                         .requestMatchers("/api/**").authenticated()
                         // Everything else is the React shell, Swagger UI and static assets.
-                        // They carry no data - every customer record is fetched through /api.
+                        // They carry no data, every customer record is fetched through /api.
                         .anyRequest().permitAll())
-                .oauth2ResourceServer(o -> o
-                        .jwt(Customizer.withDefaults())
-                        .authenticationEntryPoint(entryPoint))
+                .oauth2ResourceServer(o -> o.jwt(Customizer.withDefaults()))
                 .exceptionHandling(e -> e.authenticationEntryPoint(entryPoint))
                 .build();
     }

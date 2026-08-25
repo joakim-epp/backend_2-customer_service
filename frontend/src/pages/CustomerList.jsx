@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { deleteCustomer, listCustomers } from '../api.js'
 
 export default function CustomerList() {
@@ -7,14 +7,12 @@ export default function CustomerList() {
   const [message, setMessage] = useState(null)
   const [error, setError] = useState(null)
   const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
 
   const load = async () => {
     setLoading(true)
     try {
       setCustomers(await listCustomers())
     } catch (e) {
-      if (e.status === 401) return navigate('/login', { replace: true })
       setError(e.message)
     } finally {
       setLoading(false)
@@ -31,13 +29,12 @@ export default function CustomerList() {
       setMessage(`${customer.firstName} ${customer.lastName} was deleted`)
       await load()
     } catch (e) {
-      // The three failure modes the contract defines, each worth its own wording.
+      // Two failure modes from the contract get their own wording. A 401 never lands here,
+      // request() redirects to /login before the promise rejects.
       if (e.errorCode === 'CUSTOMER_HAS_ACTIVE_BOOKINGS') {
         setError(`${customer.firstName} ${customer.lastName} has ${e.problem.activeBookingCount} active bookings and cannot be deleted`)
       } else if (e.errorCode === 'BOOKING_SERVICE_UNAVAILABLE') {
         setError('The booking service is unavailable, so we cannot verify bookings right now. Try again later.')
-      } else if (e.status === 401) {
-        navigate('/login', { replace: true })
       } else {
         setError(e.message)
       }
