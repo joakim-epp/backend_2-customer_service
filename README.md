@@ -61,8 +61,8 @@ Alla endpoints utom `POST /api/auth/login` kräver `Authorization: Bearer <token
 | PUT | `/api/customers/{id}` | 200 · 400 · 404 · 409 |
 | DELETE | `/api/customers/{id}` | 204 · 400 · 404 · 409 · 503 |
 
-E-post är valfritt, men två aktiva kunder får inte dela adress: en dubblett ger 409
-`EMAIL_ALREADY_USED`, oavsett versaler. Adressen blir ledig igen när kunden raderas.
+`GET /actuator/health` är öppen och kräver ingen token. Grupperna `/readiness` (kollar även
+databasen) och `/liveness` används av Docker-healthchecken och Kubernetes-probarna.
 
 Fel returneras som `application/problem+json` med ett maskinläsbart `errorCode`:
 
