@@ -52,6 +52,12 @@ public class ApiExceptionHandler {
                 "CUSTOMER_NOT_FOUND", "/problems/customer-not-found", request);
     }
 
+    @ExceptionHandler(EmailAlreadyUsedException.class)
+    ProblemDetail emailAlreadyUsed(EmailAlreadyUsedException e, HttpServletRequest request) {
+        return problem(HttpStatus.CONFLICT, "Email address is already in use", e.getMessage(),
+                "EMAIL_ALREADY_USED", "/problems/email-already-used", request);
+    }
+
     @ExceptionHandler(CustomerHasActiveBookingsException.class)
     ProblemDetail customerHasActiveBookings(CustomerHasActiveBookingsException e, HttpServletRequest request) {
         ProblemDetail problem = problem(HttpStatus.CONFLICT, "Customer cannot be deleted",

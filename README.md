@@ -42,7 +42,7 @@ behövs. Backend ensamt serverar ingen frontend, bundlen byggs bara i Docker.
 JAVA_HOME=$(/usr/libexec/java_home -v 21) ./mvnw test
 ```
 
-32 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
+36 tester. Postgres startas av Testcontainers, så Docker måste vara igång.
 
 Bokningstjänsten stubbas med `MockRestServiceServer` i `BookingClientTest` och med
 `@MockitoBean` i `CustomerDeleteIntegrationTest`.
@@ -57,9 +57,12 @@ Alla endpoints utom `POST /api/auth/login` kräver `Authorization: Bearer <token
 | GET | `/api/customers` | 200 |
 | GET | `/api/customers?ids=1,2,3` | 200 · 400 |
 | GET | `/api/customers/{id}` | 200 · 400 · 404 |
-| POST | `/api/customers` | 201 + `Location` · 400 |
-| PUT | `/api/customers/{id}` | 200 · 400 · 404 |
+| POST | `/api/customers` | 201 + `Location` · 400 · 409 |
+| PUT | `/api/customers/{id}` | 200 · 400 · 404 · 409 |
 | DELETE | `/api/customers/{id}` | 204 · 400 · 404 · 409 · 503 |
+
+E-post är valfritt, men två aktiva kunder får inte dela adress: en dubblett ger 409
+`EMAIL_ALREADY_USED`, oavsett versaler. Adressen blir ledig igen när kunden raderas.
 
 Fel returneras som `application/problem+json` med ett maskinläsbart `errorCode`:
 

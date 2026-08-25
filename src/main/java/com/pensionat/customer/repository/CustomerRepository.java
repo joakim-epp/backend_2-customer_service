@@ -14,4 +14,6 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     /** Batch lookup deliberately includes soft-deleted customers, see CustomerService.findByIds. */
     List<Customer> findByIdIn(List<Long> ids);
+
+    Optional<Customer> findByEmailIgnoreCaseAndDeletedAtIsNull(String email);
 }

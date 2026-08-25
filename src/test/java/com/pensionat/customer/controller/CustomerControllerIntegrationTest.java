@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Instant;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -34,9 +36,14 @@ class CustomerControllerIntegrationTest {
     }
 
     private Long saveCustomer(String firstName, String lastName) {
+        return saveCustomer(firstName, lastName, null);
+    }
+
+    private Long saveCustomer(String firstName, String lastName, String email) {
         Customer c = new Customer();
         c.setFirstName(firstName);
         c.setLastName(lastName);
+        c.setEmail(email);
         return customerRepository.save(c).getId();
     }
 
@@ -140,6 +147,69 @@ class CustomerControllerIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"firstName": "Anna", "lastName": "Andersson"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.lastName").value("Andersson"));
+    }
+
+    @Test
+    void emailTakenByAnotherCustomerReturns409() throws Exception {
+        saveCustomer("Anna", "Svensson", "anna@example.com");
+
+        mockMvc.perform(post("/api/customers")
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName": "Bo", "lastName": "Nilsson", "email": "ANNA@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_ALREADY_USED"));
+
+        assertThat(customerRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void emailOfDeletedCustomerCanBeReused() throws Exception {
+        Customer deleted = new Customer();
+        deleted.setFirstName("Anna");
+        deleted.setLastName("Svensson");
+        deleted.setEmail("anna@example.com");
+        deleted.setDeletedAt(Instant.now());
+        customerRepository.save(deleted);
+
+        mockMvc.perform(post("/api/customers")
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName": "Bo", "lastName": "Nilsson", "email": "anna@example.com"}
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void updateToEmailOfAnotherCustomerReturns409() throws Exception {
+        saveCustomer("Anna", "Svensson", "anna@example.com");
+        Long id = saveCustomer("Bo", "Nilsson", "bo@example.com");
+
+        mockMvc.perform(put("/api/customers/" + id)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName": "Bo", "lastName": "Nilsson", "email": "anna@example.com"}
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.errorCode").value("EMAIL_ALREADY_USED"));
+    }
+
+    @Test
+    void updateKeepingOwnEmailReturns200() throws Exception {
+        Long id = saveCustomer("Bo", "Nilsson", "bo@example.com");
+
+        mockMvc.perform(put("/api/customers/" + id)
+                        .with(jwt())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"firstName": "Bo", "lastName": "Andersson", "email": "bo@example.com"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.lastName").value("Andersson"));
