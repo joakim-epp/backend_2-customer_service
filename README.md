@@ -61,6 +61,9 @@ Alla endpoints utom `POST /api/auth/login` kräver `Authorization: Bearer <token
 | PUT | `/api/customers/{id}` | 200 · 400 · 404 |
 | DELETE | `/api/customers/{id}` | 204 · 400 · 404 · 409 · 503 |
 
+`GET /actuator/health` är öppen och kräver ingen token. Grupperna `/readiness` (kollar även
+databasen) och `/liveness` används av Docker-healthchecken och Kubernetes-probarna.
+
 Fel returneras som `application/problem+json` med ett maskinläsbart `errorCode`:
 
 ```json
