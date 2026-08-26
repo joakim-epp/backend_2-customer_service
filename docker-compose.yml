@@ -29,5 +29,36 @@ services:
       customer-db:
         condition: service_healthy
 
+  notification-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: notificationdb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - notification-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Built from a sibling clone. The notification service lives in its own repository, as the
+  # assignment requires, but the system starts from one compose file.
+  notification-service:
+    build: ../backend2_notification-service
+    ports:
+      - "8082:8082"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://notification-db:5432/notificationdb
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: postgres
+      JWT_SECRET: ${JWT_SECRET}
+      CUSTOMER_SERVICE_URL: http://customer-service:8080
+    depends_on:
+      notification-db:
+        condition: service_healthy
+
 volumes:
   customer-db-data:
+  notification-db-data:
