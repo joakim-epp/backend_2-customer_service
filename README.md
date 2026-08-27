@@ -89,6 +89,20 @@ en kund som försvinner med bokningar kvar i en annan databas.
 
 Timeouts 2 sekunder, inga omförsök.
 
+## Attrapp för bokningstjänsten
+
+Tills den riktiga bokningstjänsten finns svarar en WireMock-container på den enda endpoint
+kundtjänsten anropar. Stubbarna ligger i `stubs/booking-service/mappings/`:
+
+| Kund | Svar |
+|---|---|
+| `customerId=1` | `{"count": 2}`, radering ger 409 |
+| alla andra | `{"count": 0}`, radering ger 204 |
+
+`docker compose stop booking-service` ger 503 på radering, vilket är fallet "andra tjänsten är
+nere". Ta bort `booking-service`-blocket ur `docker-compose.yml` och hela `stubs/`-katalogen när
+den riktiga tjänsten läggs in.
+
 ## Miljövariabler
 
 | Variabel | Standard | Beskrivning |

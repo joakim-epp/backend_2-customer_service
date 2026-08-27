@@ -29,6 +29,17 @@ services:
       customer-db:
         condition: service_healthy
 
+  # Stand-in for the booking service until the real one is ready. WireMock answers the one
+  # endpoint the customer service needs: customer 1 has two active bookings, everyone else has
+  # none. Delete this block and its stubs/ directory once the real service is in the compose file.
+  booking-service:
+    image: wiremock/wiremock:3.9.1
+    command: ["--port", "8081", "--verbose"]
+    ports:
+      - "8081:8081"
+    volumes:
+      - ./stubs/booking-service/mappings:/home/wiremock/mappings:ro
+
   notification-db:
     image: postgres:17-alpine
     environment:
