@@ -118,13 +118,13 @@ den riktiga tjänsten läggs in.
 ## Kubernetes
 
 ```bash
-kubectl create secret generic pensionat-secrets \
-  --from-literal=jwt-secret="$(openssl rand -base64 32)" \
-  --from-literal=admin-password="valj-ett-losenord"
-
-docker build -t customer-service:latest .
+./k8s/create-secret.sh   # läser JWT_SECRET och ADMIN_PASSWORD ur .env
+docker compose build     # taggar customer-service:latest och notification-service:latest
 kubectl apply -f k8s/
 ```
+
+Skriptet går att köra om, en befintlig secret ersätts. Samma `JWT_SECRET` som tjänsterna kör
+med i compose, annars underkänner de varandras tokens i klustret.
 
 ## Deployment
 
