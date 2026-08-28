@@ -15,6 +15,9 @@ services:
 
   customer-service:
     build: .
+    # Tagged so that k8s/ and compose share one build. Without it compose names the image after
+    # the project directory and the Deployment's image: customer-service:latest never resolves.
+    image: customer-service:latest
     ports:
       - "8080:8080"
     environment:
@@ -58,6 +61,7 @@ services:
   # assignment requires, but the system starts from one compose file.
   notification-service:
     build: ../backend2_notification-service
+    image: notification-service:latest
     ports:
       - "8082:8082"
     environment:
