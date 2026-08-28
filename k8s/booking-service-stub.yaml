@@ -1,0 +1,77 @@
+# Stand-in for the booking service until the real one is ready, mirroring the WireMock container
+# in docker-compose.yml: customer 1 has two active bookings, everyone else has none. Delete this
+# whole file once the real service has its own manifest.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: booking-service-stubs
+data:
+  customer-1-has-bookings.json: |
+    {
+      "priority": 1,
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/bookings/count",
+        "queryParameters": {
+          "customerId": { "equalTo": "1" },
+          "status": { "equalTo": "ACTIVE" }
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "count": 2 }
+      }
+    }
+  no-bookings.json: |
+    {
+      "priority": 2,
+      "request": {
+        "method": "GET",
+        "urlPath": "/api/bookings/count"
+      },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "jsonBody": { "count": 0 }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: booking-service
+  template:
+    metadata:
+      labels:
+        app: booking-service
+    spec:
+      containers:
+        - name: wiremock
+          image: wiremock/wiremock:3.9.1
+          args: ["--port", "8081", "--verbose"]
+          ports:
+            - containerPort: 8081
+          volumeMounts:
+            - name: stubs
+              mountPath: /home/wiremock/mappings
+      volumes:
+        - name: stubs
+          configMap:
+            name: booking-service-stubs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+spec:
+  selector:
+    app: booking-service
+  ports:
+    - port: 8081
+      targetPort: 8081

@@ -126,6 +126,14 @@ kubectl apply -f k8s/
 Skriptet går att köra om, en befintlig secret ersätts. Samma `JWT_SECRET` som tjänsterna kör
 med i compose, annars underkänner de varandras tokens i klustret.
 
+`k8s/` startar hela systemet: kundtjänsten och notifieringstjänsten med varsin Postgres, plus
+WireMock-attrappen för bokningstjänsten. Tjänsterna hittar varandra på sina Service-namn, samma
+namn som i compose. `booking-service-stub.yaml` tas bort när den riktiga tjänsten får ett eget
+manifest.
+
+Tjänsterna är ClusterIP, alltså inte nåbara utifrån. `kubectl port-forward svc/customer-service
+8080:8080` när du vill åt gränssnittet. Riv ner med `kubectl delete -f k8s/`.
+
 ## Deployment
 
 Deploya **sist**, när allt fungerar lokalt. Render och Railway ger begränsade gratiskrediter,
