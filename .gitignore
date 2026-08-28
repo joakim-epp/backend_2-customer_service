@@ -38,7 +38,11 @@ build/
 ### Frontend ###
 frontend/node_modules/
 frontend/dist/
-src/main/resources/static/
+# The frontend bundle is copied in here at build time. Trailing /* rather than /, otherwise the
+# excluded directory swallows the negation below.
+src/main/resources/static/*
+# Except the hand-written specs, which are not build output.
+!src/main/resources/static/openapi/
 
 ### Docs ###
 docs/

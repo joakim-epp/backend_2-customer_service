@@ -1,0 +1,52 @@
+openapi: 3.0.3
+info:
+  title: Bokningstjänsten (attrapp)
+  version: "0.1.0"
+  description: |
+    Beskriver det kontrakt kundtjänsten förlitar sig på. Just nu svarar en WireMock-attrapp,
+    inte den riktiga tjänsten.
+
+    Attrappens regler:
+
+    * `customerId=1` har två aktiva bokningar, radering av den kunden ger 409
+    * alla andra kunder har noll, radering ger 204
+    * allt utom `GET /api/bookings/count` ger 404
+    * `Authorization` läses aldrig, den riktiga tjänsten ska kräva token
+
+    Stoppa den med `docker compose stop booking-service` för att se 503 på radering.
+servers:
+  - url: http://localhost:8081
+    description: Attrappen, publicerad av docker compose
+paths:
+  /api/bookings/count:
+    get:
+      summary: Antal bokningar för en kund
+      description: Anropas av kundtjänsten innan en kund raderas.
+      parameters:
+        - name: customerId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+          example: 1
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [ACTIVE]
+          example: ACTIVE
+      responses:
+        "200":
+          description: Antalet bokningar med den statusen
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count:
+                    type: integer
+                    format: int64
+                    example: 2

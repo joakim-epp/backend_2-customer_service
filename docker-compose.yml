@@ -37,7 +37,8 @@ services:
   # none. Delete this block and its stubs/ directory once the real service is in the compose file.
   booking-service:
     image: wiremock/wiremock:3.9.1
-    command: ["--port", "8081", "--verbose"]
+    # CORS so that "Try it out" in the customer service's Swagger UI can reach it.
+    command: ["--port", "8081", "--verbose", "--enable-stub-cors"]
     ports:
       - "8081:8081"
     volumes:

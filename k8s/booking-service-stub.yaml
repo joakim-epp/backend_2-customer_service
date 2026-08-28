@@ -54,7 +54,7 @@ spec:
       containers:
         - name: wiremock
           image: wiremock/wiremock:3.9.1
-          args: ["--port", "8081", "--verbose"]
+          args: ["--port", "8081", "--verbose", "--enable-stub-cors"]
           ports:
             - containerPort: 8081
           volumeMounts:
