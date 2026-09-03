@@ -58,8 +58,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # Built from a sibling clone. The notification service lives in its own repository, as the
-  # assignment requires, but the system starts from one compose file.
   notification-service:
     build: ../backend2_notification-service
     image: notification-service:latest
