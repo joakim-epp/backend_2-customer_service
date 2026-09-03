@@ -136,8 +136,8 @@ docker exec desktop-control-plane crictl rmi docker.io/library/booking-service:l
 kubectl rollout restart deploy/booking-service
 ```
 
-Tjänsterna är ClusterIP, alltså inte nåbara utifrån. `kubectl port-forward svc/customer-service
-8080:8080` när du vill åt gränssnittet. Riv ner med `kubectl delete -f k8s/`.
+Tjänsterna är ClusterIP, alltså inte nåbara utifrån. `./k8s/port-forward.sh` forwardar alla tre
+i bakgrunden och skriver ut inloggningen, `./k8s/port-forward.sh stop` stänger. Riv ner med `kubectl delete -f k8s/`.
 
 ## Deployment
 
