@@ -5,6 +5,7 @@ import com.pensionat.customer.dto.CustomerRequest;
 import com.pensionat.customer.dto.CustomerResponse;
 import com.pensionat.customer.exception.CustomerHasActiveBookingsException;
 import com.pensionat.customer.exception.CustomerNotFoundException;
+import com.pensionat.customer.exception.EmailAlreadyUsedException;
 import com.pensionat.customer.model.Customer;
 import com.pensionat.customer.repository.CustomerRepository;
 import org.springframework.stereotype.Service;
@@ -49,6 +50,8 @@ public class CustomerService {
 
     @Transactional
     public CustomerResponse create(CustomerRequest request) {
+        requireEmailUnused(request.email(), null);
+
         Customer c = new Customer();
         apply(request, c);
         return toResponse(customerRepository.save(c));
@@ -58,6 +61,7 @@ public class CustomerService {
     public CustomerResponse update(Long id, CustomerRequest request) {
         Customer c = customerRepository.findByIdAndDeletedAtIsNull(id)
                 .orElseThrow(() -> new CustomerNotFoundException(id));
+        requireEmailUnused(request.email(), id);
         apply(request, c);
         return toResponse(customerRepository.save(c));
     }
@@ -84,6 +88,26 @@ public class CustomerService {
             c.setDeletedAt(Instant.now());
             customerRepository.save(c);
         });
+    }
+
+    /**
+     * Email is optional, but two active customers must not share one: it is what the staff
+     * search by and what a booking confirmation is sent to. Soft-deleted rows are excluded, so
+     * an address frees up again once its customer is deleted.
+     *
+     * <p>Check-then-write, with no unique index behind it. Two concurrent creates with the same
+     * address can still both pass. Closing that would take a partial unique index on
+     * lower(email) where deleted_at is null, which Hibernate cannot express with ddl-auto.
+     */
+    private void requireEmailUnused(String email, Long ownerId) {
+        if (email == null || email.isBlank()) {
+            return;
+        }
+        customerRepository.findByEmailIgnoreCaseAndDeletedAtIsNull(email)
+                .filter(existing -> !existing.getId().equals(ownerId))
+                .ifPresent(existing -> {
+                    throw new EmailAlreadyUsedException(email);
+                });
     }
 
     private void apply(CustomerRequest request, Customer c) {
