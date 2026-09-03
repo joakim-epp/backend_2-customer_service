@@ -8,7 +8,8 @@ läser i databasen, all kommunikation sker via REST.
 
 ## Kom igång
 
-Kräver Docker och en JDK 21.
+Kräver Docker. Klona de tre repona bredvid varandra, compose bygger bokningstjänsten och
+notifieringstjänsten från syskonklonerna.
 
 ```bash
 # hemligheter, en gång
@@ -22,6 +23,8 @@ docker compose up --build
 
 Applikationen på <http://localhost:8080>, Swagger UI på
 <http://localhost:8080/swagger-ui/index.html>. Logga in med `admin` och lösenordet ur `.env`.
+Bokningstjänsten med frontend på <http://localhost:8081>, notifieringstjänsten på
+<http://localhost:8082>.
 
 `JWT_SECRET` måste vara **identisk** i alla tre tjänsterna, annars underkänns varandras tokens.
 Dela den utanför repot, `.env` är gitignorerad.
@@ -92,19 +95,11 @@ en kund som försvinner med bokningar kvar i en annan databas.
 
 Timeouts 2 sekunder, inga omförsök.
 
-## Attrapp för bokningstjänsten
-
-Tills den riktiga bokningstjänsten finns svarar en WireMock-container på den enda endpoint
-kundtjänsten anropar. Stubbarna ligger i `stubs/booking-service/mappings/`:
-
-| Kund | Svar |
-|---|---|
-| `customerId=1` | `{"count": 2}`, radering ger 409 |
-| alla andra | `{"count": 0}`, radering ger 204 |
+## Bokningstjänsten i drift
 
 `docker compose stop booking-service` ger 503 på radering, vilket är fallet "andra tjänsten är
-nere". Ta bort `booking-service`-blocket ur `docker-compose.yml` och hela `stubs/`-katalogen när
-den riktiga tjänsten läggs in.
+nere". Bokningstjänsten frågar i sin tur `GET /api/customers/{id}` här innan en bokning skapas
+och vidarebefordrar sina kundsidor till `/api/customers/**`.
 
 ## Miljövariabler
 
@@ -122,17 +117,24 @@ den riktiga tjänsten läggs in.
 
 ```bash
 ./k8s/create-secret.sh   # läser JWT_SECRET och ADMIN_PASSWORD ur .env
-docker compose build     # taggar customer-service:latest och notification-service:latest
+docker compose build     # taggar customer-service, booking-service och notification-service :latest
 kubectl apply -f k8s/
 ```
 
 Skriptet går att köra om, en befintlig secret ersätts. Samma `JWT_SECRET` som tjänsterna kör
 med i compose, annars underkänner de varandras tokens i klustret.
 
-`k8s/` startar hela systemet: kundtjänsten och notifieringstjänsten med varsin Postgres, plus
-WireMock-attrappen för bokningstjänsten. Tjänsterna hittar varandra på sina Service-namn, samma
-namn som i compose. `booking-service-stub.yaml` tas bort när den riktiga tjänsten får ett eget
-manifest.
+`k8s/` startar hela systemet, alla tre tjänster med varsin Postgres. Tjänsterna hittar varandra på
+sina Service-namn, samma namn som i compose. Manifesten för bokningstjänsten är kopior av dem i
+bokningstjänstens repo.
+
+Docker Desktops kluster hämtar en lokal image en gång och behåller den så länge taggen finns
+kvar i noden, även efter en ny `docker compose build`. Kör en pod en gammal image:
+
+```bash
+docker exec desktop-control-plane crictl rmi docker.io/library/booking-service:latest
+kubectl rollout restart deploy/booking-service
+```
 
 Tjänsterna är ClusterIP, alltså inte nåbara utifrån. `kubectl port-forward svc/customer-service
 8080:8080` när du vill åt gränssnittet. Riv ner med `kubectl delete -f k8s/`.
