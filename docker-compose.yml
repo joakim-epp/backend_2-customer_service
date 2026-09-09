@@ -62,7 +62,6 @@ services:
     environment:
       PORT: 8081
       PGHOST: booking-db
-      PORT: 8081
       PGPORT: 5432
       PGDATABASE: bookingdb
       SPRING_DATASOURCE_USERNAME: postgres
