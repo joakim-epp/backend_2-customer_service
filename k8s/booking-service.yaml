@@ -14,6 +14,7 @@ spec:
     spec:
       containers:
         - name: booking-service
+          # Built from ../Backend2_booking by docker compose build booking-service.
           image: booking-service:latest
           imagePullPolicy: IfNotPresent
           env:

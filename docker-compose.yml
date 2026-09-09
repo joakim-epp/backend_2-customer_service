@@ -60,6 +60,7 @@ services:
     ports:
       - "8081:8081"
     environment:
+      PORT: 8081
       PGHOST: booking-db
       PORT: 8081
       PGPORT: 5432

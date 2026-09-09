@@ -18,10 +18,10 @@ IdeaProjects/
 └── backend2_notification-service/
 ```
 
-Kör Compose från kundtjänstens katalog. Bokningstjänsten byggs från
-`../Backend2_booking` och körs på port 8081 i både Compose och Kubernetes.
-`NOTIFICATION_SERVICE_URL=http://notification-service:8082` pekar på
-notifieringstjänsten i containernätverket; använd inte `localhost` för detta anrop.
+Bokningstjänsten byggs med sin egen `Dockerfile` i `../Backend2_booking` och körs på
+port 8081 i både Compose och Kubernetes. Kör kommandona nedan från
+`backend2_customer-service`. `NOTIFICATION_SERVICE_URL=http://notification-service:8082`
+pekar på notifieringstjänsten i containernätverket; använd inte `localhost` för detta anrop.
 
 ```bash
 # hemligheter, en gång
@@ -40,6 +40,12 @@ Bokningstjänsten med frontend på <http://localhost:8081>, notifieringstjänste
 
 `JWT_SECRET` måste vara **identisk** i alla tre tjänsterna, annars underkänns varandras tokens.
 Dela den utanför repot, `.env` är gitignorerad.
+
+Bokningstjänsten har ett webbinloggningsflöde på `/login` som använder kundtjänstens
+inloggning. Formuläranrop skyddas med session och CSRF-token. Dess `/api/**` kräver
+Bearer-token i Authorization-headern, som också vidarebefordras vid kunduppslag och
+anrop till notifieringstjänsten. `NOTIFICATION_SERVICE_URL` är konfigurerad i både
+Compose och Kubernetes.
 
 ### Utveckling
 
@@ -111,7 +117,7 @@ Timeouts 2 sekunder, inga omförsök.
 
 `docker compose stop booking-service` ger 503 på radering, vilket är fallet "andra tjänsten är
 nere". Bokningstjänsten frågar i sin tur `GET /api/customers/{id}` här innan en bokning skapas
-och vidarebefordrar sina kundsidor till `/api/customers/**`.
+och vidarebefordrar användarens token vid uppslaget.
 
 ## Miljövariabler
 
@@ -178,6 +184,11 @@ Starta igen med `./k8s/up.sh --skip-build`. Radering av PVC:erna tar bort datala
 `kubectl delete -f k8s/` ska därför inte användas som vanligt stoppkommando.
 
 ## Deployment
+
+Varje applikation deployas separat på Railway med `Dockerfile` och `railway.json` i sitt
+eget repo. Kundtjänstens image innehåller även React-frontenden. Samlad konfiguration för
+två Railway-konton finns i [RAILWAY.md](RAILWAY.md): kund- och notifieringstjänsten med
+varsin databas på Joakims konto, bokningstjänsten och dess databas på gruppmedlemmens konto.
 
 Deploya **sist**, när allt fungerar lokalt. Render och Railway ger begränsade gratiskrediter,
 och tar de slut går tjänsten inte att nå vid redovisningen.

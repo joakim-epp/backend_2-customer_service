@@ -46,6 +46,8 @@ src/main/resources/static/*
 
 ### Docs ###
 docs/
+.port-forward.pids
+.port-forward.log
 
 .k8s-port-forward.pids
 
