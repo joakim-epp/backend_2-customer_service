@@ -11,6 +11,18 @@ läser i databasen, all kommunikation sker via REST.
 Kräver Docker. Klona de tre repona bredvid varandra, compose bygger bokningstjänsten och
 notifieringstjänsten från syskonklonerna.
 
+```text
+IdeaProjects/
+├── backend2_customer-service/
+├── Backend2_booking/
+└── backend2_notification-service/
+```
+
+Bokningstjänsten byggs med sin egen `Dockerfile` i `../Backend2_booking` och körs på
+port 8081 i både Compose och Kubernetes. Kör kommandona nedan från
+`backend2_customer-service`. `NOTIFICATION_SERVICE_URL=http://notification-service:8082`
+pekar på notifieringstjänsten i containernätverket; använd inte `localhost` för detta anrop.
+
 ```bash
 # hemligheter, en gång
 cat > .env <<'ENV'
@@ -28,6 +40,12 @@ Bokningstjänsten med frontend på <http://localhost:8081>, notifieringstjänste
 
 `JWT_SECRET` måste vara **identisk** i alla tre tjänsterna, annars underkänns varandras tokens.
 Dela den utanför repot, `.env` är gitignorerad.
+
+Bokningstjänsten har ett webbinloggningsflöde på `/login` som använder kundtjänstens
+inloggning. Formuläranrop skyddas med session och CSRF-token. Dess `/api/**` kräver
+Bearer-token i Authorization-headern, som också vidarebefordras vid kunduppslag och
+anrop till notifieringstjänsten. `NOTIFICATION_SERVICE_URL` är konfigurerad i både
+Compose och Kubernetes.
 
 ### Utveckling
 
@@ -99,7 +117,7 @@ Timeouts 2 sekunder, inga omförsök.
 
 `docker compose stop booking-service` ger 503 på radering, vilket är fallet "andra tjänsten är
 nere". Bokningstjänsten frågar i sin tur `GET /api/customers/{id}` här innan en bokning skapas
-och vidarebefordrar sina kundsidor till `/api/customers/**`.
+och vidarebefordrar användarens token vid uppslaget.
 
 ## Miljövariabler
 
@@ -115,31 +133,62 @@ och vidarebefordrar sina kundsidor till `/api/customers/**`.
 
 ## Kubernetes
 
-```bash
-./k8s/create-secret.sh   # läser JWT_SECRET och ADMIN_PASSWORD ur .env
-docker compose build     # taggar customer-service, booking-service och notification-service :latest
-kubectl apply -f k8s/
-```
-
-Skriptet går att köra om, en befintlig secret ersätts. Samma `JWT_SECRET` som tjänsterna kör
-med i compose, annars underkänner de varandras tokens i klustret.
-
-`k8s/` startar hela systemet, alla tre tjänster med varsin Postgres. Tjänsterna hittar varandra på
-sina Service-namn, samma namn som i compose. Manifesten för bokningstjänsten är kopior av dem i
-bokningstjänstens repo.
-
-Docker Desktops kluster hämtar en lokal image en gång och behåller den så länge taggen finns
-kvar i noden, även efter en ny `docker compose build`. Kör en pod en gammal image:
+Kör hela systemet i Docker Desktop Kubernetes med klustertypen **kind**.
+Docker Desktop ska vara igång, `kubectl` ska använda context `docker-desktop`,
+och `.env` ska innehålla `JWT_SECRET` och `ADMIN_PASSWORD`.
+Alla tre repon ska ligga bredvid varandra enligt katalogstrukturen ovan.
 
 ```bash
-docker exec desktop-control-plane crictl rmi docker.io/library/booking-service:latest
-kubectl rollout restart deploy/booking-service
+./k8s/up.sh
 ```
 
-Tjänsterna är ClusterIP, alltså inte nåbara utifrån. `./k8s/port-forward.sh` forwardar alla tre
-i bakgrunden och skriver ut inloggningen, `./k8s/port-forward.sh stop` stänger. Riv ner med `kubectl delete -f k8s/`.
+Skriptet bygger de tre Docker-imagerna, ger dem nya versionstaggar, laddar in dem
+på Kubernetes-noderna och skapar hemligheter, tre databaser och tre tjänster.
+Databaserna blir redo innan applikationerna startas. Därefter öppnas:
+
+| Tjänst | Adress |
+|---|---|
+| Kundtjänsten | http://localhost:18080 |
+| Bokningstjänsten | http://localhost:18081 |
+| Notifieringstjänsten | http://localhost:18082 |
+
+Portarna skiljer sig från Compose så att båda miljöerna kan köras samtidigt.
+Logga in med `admin` och `ADMIN_PASSWORD` från `.env`. Alla tre tjänster använder
+samma JWT-nyckel. Notifieringar sparas i notifieringstjänstens databas; ingen
+SMTP-leverans sker.
+
+Varje databas har en egen PVC på 1 GiB via klustrets standard-StorageClass.
+PostgreSQL-data monteras från volymen och finns kvar när en pod ersätts.
+Databasernas Deployment använder `Recreate` så att två PostgreSQL-processer inte
+startas samtidigt mot samma volym. Kubernetes-data är separat från Compose-data.
+
+```bash
+kubectl get pods,pvc
+./k8s/port-forward.sh stop   # stänger bara lokala portar
+./k8s/port-forward.sh        # öppnar portarna igen
+```
+
+Vid körning från en IDE eller automation kan `./k8s/port-forward.sh --foreground`
+hålla port-forwarding i förgrunden. `./k8s/up.sh --skip-build` använder de redan
+byggda Docker-imagerna men importerar dem med nya taggar, vilket undviker gamla
+cachade images på noden. Skripten använder aktuellt namespace.
+
+För att stoppa tjänsterna och behålla data:
+
+```bash
+./k8s/port-forward.sh stop
+kubectl scale deployment customer-service booking-service notification-service customer-db booking-db notification-db --replicas=0
+```
+
+Starta igen med `./k8s/up.sh --skip-build`. Radering av PVC:erna tar bort datalagringen;
+`kubectl delete -f k8s/` ska därför inte användas som vanligt stoppkommando.
 
 ## Deployment
+
+Varje applikation deployas separat på Railway med `Dockerfile` och `railway.json` i sitt
+eget repo. Kundtjänstens image innehåller även React-frontenden. Samlad konfiguration för
+två Railway-konton finns i [RAILWAY.md](RAILWAY.md): kund- och notifieringstjänsten med
+varsin databas på Joakims konto, bokningstjänsten och dess databas på gruppmedlemmens konto.
 
 Deploya **sist**, när allt fungerar lokalt. Render och Railway ger begränsade gratiskrediter,
 och tar de slut går tjänsten inte att nå vid redovisningen.
