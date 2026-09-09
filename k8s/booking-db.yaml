@@ -4,6 +4,8 @@ metadata:
   name: booking-db
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: booking-db
@@ -16,6 +18,8 @@ spec:
         - name: postgres
           image: postgres:17-alpine
           env:
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
             - name: POSTGRES_DB
               value: bookingdb
             - name: POSTGRES_USER
@@ -24,6 +28,22 @@ spec:
               value: postgres
           ports:
             - containerPort: 5432
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          startupProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "bookingdb"]
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres", "-d", "bookingdb"]
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: booking-db-data
 ---
 apiVersion: v1
 kind: Service
@@ -35,3 +55,14 @@ spec:
   ports:
     - port: 5432
       targetPort: 5432
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: booking-db-data
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
