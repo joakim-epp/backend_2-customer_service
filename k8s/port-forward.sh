@@ -23,7 +23,7 @@ stop_owned_forwards() {
         kill "$pid" 2>/dev/null || true
     done
     # Another invocation may already have written its own PID file.
-    if [ -f "$pidfile" ] && [ "$(tr '\n' ' ' < "$pidfile")" = "$owned_pids" ]; then
+    if [ -f "$pidfile" ] && [ "$(cat "$pidfile" 2>/dev/null | tr '\n' ' ')" = "$owned_pids" ]; then
         rm -f "$pidfile"
     fi
 }
