@@ -55,12 +55,13 @@ services:
       retries: 10
 
   booking-service:
-    build: ../backend2_booking-service
+    build: ../Backend2_booking
     image: booking-service:latest
     ports:
       - "8081:8081"
     environment:
       PGHOST: booking-db
+      PORT: 8081
       PGPORT: 5432
       PGDATABASE: bookingdb
       SPRING_DATASOURCE_USERNAME: postgres

@@ -11,6 +11,18 @@ läser i databasen, all kommunikation sker via REST.
 Kräver Docker. Klona de tre repona bredvid varandra, compose bygger bokningstjänsten och
 notifieringstjänsten från syskonklonerna.
 
+```text
+IdeaProjects/
+├── backend2_customer-service/
+├── Backend2_booking/
+└── backend2_notification-service/
+```
+
+Kör Compose från kundtjänstens katalog. Bokningstjänsten byggs från
+`../Backend2_booking` och körs på port 8081 i både Compose och Kubernetes.
+`NOTIFICATION_SERVICE_URL=http://notification-service:8082` pekar på
+notifieringstjänsten i containernätverket; använd inte `localhost` för detta anrop.
+
 ```bash
 # hemligheter, en gång
 cat > .env <<'ENV'

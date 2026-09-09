@@ -17,6 +17,8 @@ spec:
           image: booking-service:latest
           imagePullPolicy: IfNotPresent
           env:
+            - name: PORT
+              value: "8081"
             - name: PGHOST
               value: booking-db
             - name: PGPORT
