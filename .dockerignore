@@ -1,5 +1,8 @@
 target/
 .git/
+# Never send local environment files to the image builder, including nested files.
+**/.env
+**/.env.*
 .idea/
 *.iml
 docs/

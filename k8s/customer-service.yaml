@@ -12,22 +12,44 @@ spec:
       labels:
         app: customer-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: customer-service
           image: customer-service:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           env:
+            - name: PORT
+              value: "8080"
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://customer-db:5432/customerdb
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: pensionat-secrets
+                  key: customer-db-password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
                   name: pensionat-secrets
                   key: jwt-secret
+            - name: ADMIN_USERNAME
+              value: admin
             - name: ADMIN_PASSWORD
               valueFrom:
                 secretKeyRef:
@@ -53,6 +75,9 @@ spec:
               path: /actuator/health/liveness
               port: 8080
             periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
