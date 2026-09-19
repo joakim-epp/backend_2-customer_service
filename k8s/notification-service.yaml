@@ -12,17 +12,37 @@ spec:
       labels:
         app: notification-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: notification-service
           image: notification-service:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           env:
+            - name: PORT
+              value: "8082"
             - name: SPRING_DATASOURCE_URL
               value: jdbc:postgresql://notification-db:5432/notificationdb
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: pensionat-secrets
+                  key: notification-db-password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -48,6 +68,9 @@ spec:
               path: /actuator/health/liveness
               port: 8082
             periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

@@ -12,24 +12,38 @@ spec:
       labels:
         app: booking-service
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: booking-service
           # Built from ../Backend2_booking by docker compose build booking-service.
           image: booking-service:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
           env:
             - name: PORT
               value: "8081"
-            - name: PGHOST
-              value: booking-db
-            - name: PGPORT
-              value: "5432"
-            - name: PGDATABASE
-              value: bookingdb
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:postgresql://booking-db:5432/bookingdb
             - name: SPRING_DATASOURCE_USERNAME
               value: postgres
             - name: SPRING_DATASOURCE_PASSWORD
-              value: postgres
+              valueFrom:
+                secretKeyRef:
+                  name: pensionat-secrets
+                  key: booking-db-password
             - name: JWT_SECRET
               valueFrom:
                 secretKeyRef:
@@ -57,6 +71,9 @@ spec:
               path: /actuator/health/liveness
               port: 8081
             periodSeconds: 10
+      volumes:
+        - name: tmp
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service

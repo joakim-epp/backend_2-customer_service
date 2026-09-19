@@ -17,7 +17,10 @@ RUN mvn -B -DskipTests package
 
 # 3. Runtime
 FROM eclipse-temurin:21-jre-alpine
+RUN addgroup -S -g 10001 app && adduser -S -D -H -u 10001 -G app app
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
+ENV PORT=8080
+USER 10001:10001
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
