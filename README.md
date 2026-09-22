@@ -227,8 +227,11 @@ i Railway, status `SUCCESS` för den nya deployen och svaret `UP` från tjänste
 publika `/actuator/health`. Felaktiga eller avbrutna deployer och en väntetid över
 tio minuter gör att jobbet misslyckas.
 
-Kontrollerna för deployskriptet körs utan Railway-token:
+Deployverktyget är skrivet i Java 21 och byggs separat från applikationen.
+JUnit-testerna körs utan Railway-token eller databas:
 
 ```bash
-python3 -m unittest discover -s scripts -p 'test_*.py'
+./mvnw --batch-mode --no-transfer-progress -f scripts/railway-deploy/pom.xml verify
 ```
+
+Källkod och körinstruktioner finns i [scripts/railway-deploy](scripts/railway-deploy).
