@@ -4,7 +4,6 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
 
 permissions:
    contents: read
@@ -29,6 +28,9 @@ jobs:
           distribution: temurin
           java-version: '21'
           cache: maven
+
+      - name: Test deployment verification
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
       - name: Run tests
         run: ./mvnw --batch-mode --no-transfer-progress verify
@@ -74,13 +76,18 @@ jobs:
     needs: image
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
 
     steps:
-      - name: Deploy latest image to Railway
+      - uses: actions/checkout@v6
+
+      - name: Install Railway CLI
+        run: npm install --global @railway/cli@5.49.0
+
+      - name: Deploy image and verify health
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: >-
-          npx --yes @railway/cli@5.49.0 service redeploy
-          --service 01d033ee-8c01-4c9b-9bd9-65c5ee45afe2
-          --from-source --yes
+          RAILWAY_SERVICE_ID: 01d033ee-8c01-4c9b-9bd9-65c5ee45afe2
+          RAILWAY_ENVIRONMENT_ID: 685d7dbd-8e4b-4dbf-ac2b-42496851452e
+          RAILWAY_HEALTH_URL: https://customer-service-production-ff17.up.railway.app/actuator/health
+        run: python3 scripts/deploy_railway.py
