@@ -13,6 +13,12 @@ query($serviceId: String!, $environmentId: String!) {
   }
 }
 """
+UPDATE_IMAGE_MUTATION = """
+mutation($serviceId: String!, $environmentId: String!, $image: String!) {
+  serviceInstanceUpdate(serviceId: $serviceId, environmentId: $environmentId,
+                        input: {source: {image: $image}})
+}
+"""
 DEPLOY_MUTATION = """
 mutation($serviceId: String!, $environmentId: String!) {
   serviceInstanceDeployV2(serviceId: $serviceId, environmentId: $environmentId)
@@ -68,13 +74,19 @@ def wait_for_deployment(deployment_id, health_url, timeout=600):
     raise TimeoutError(f"Deployment {deployment_id} did not become healthy within {timeout}s")
 
 
-def deploy(service_id, environment_id, health_url):
+def deploy(service_id, environment_id, health_url, image):
+    repository, separator, tag = image.rpartition(":")
+    if not separator or not repository or not tag or tag == "latest":
+        raise RuntimeError("An explicit published image version is required")
     variables = {"serviceId": service_id, "environmentId": environment_id}
     instance = railway_api(INSTANCE_QUERY, variables)["serviceInstance"]
     if not instance["healthcheckPath"]:
         raise RuntimeError("Configure a Railway health check before deploying")
     if not (instance["source"] or {}).get("image"):
         raise RuntimeError("Expected a Railway service configured with a Docker image")
+    if not railway_api(UPDATE_IMAGE_MUTATION, {**variables, "image": image})["serviceInstanceUpdate"]:
+        raise RuntimeError("Railway did not accept the published image version")
+    print(f"Deploying {image}", flush=True)
     deployment_id = railway_api(DEPLOY_MUTATION, variables)["serviceInstanceDeployV2"]
     if not isinstance(deployment_id, str) or not deployment_id:
         raise RuntimeError("Railway did not return a deployment ID")
@@ -84,6 +96,6 @@ def deploy(service_id, environment_id, health_url):
 if __name__ == "__main__":
     try:
         deploy(os.environ["RAILWAY_SERVICE_ID"], os.environ["RAILWAY_ENVIRONMENT_ID"],
-               os.environ["RAILWAY_HEALTH_URL"])
+               os.environ["RAILWAY_HEALTH_URL"], os.environ["RAILWAY_IMAGE"])
     except (KeyError, RuntimeError, TimeoutError, ValueError, subprocess.SubprocessError) as error:
         raise SystemExit(f"Deployment verification failed: {error}") from error

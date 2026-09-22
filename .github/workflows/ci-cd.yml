@@ -37,6 +37,8 @@ jobs:
 
   image:
     needs: test
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -44,6 +46,10 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: docker/setup-buildx-action@v4
+
+      - name: Set image version
+        id: version
+        run: echo "version=build-${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
 
       - name: Log in to Docker Hub
         if: github.event_name == 'push'
@@ -59,7 +65,7 @@ jobs:
           context: .
           push: false
           platforms: linux/amd64
-          tags: local/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: local/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
 
       - name: Build and push image
         if: github.event_name == 'push'
@@ -68,9 +74,16 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: |
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Record published version
+        if: github.event_name == 'push'
+        env:
+          IMAGE_VERSION: ${{ steps.version.outputs.version }}
+        run: echo "Published ${IMAGE_NAME}:${IMAGE_VERSION}" >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
     needs: image
@@ -87,6 +100,7 @@ jobs:
       - name: Deploy image and verify health
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.image.outputs.version }}
           RAILWAY_SERVICE_ID: 01d033ee-8c01-4c9b-9bd9-65c5ee45afe2
           RAILWAY_ENVIRONMENT_ID: 685d7dbd-8e4b-4dbf-ac2b-42496851452e
           RAILWAY_HEALTH_URL: https://customer-service-production-ff17.up.railway.app/actuator/health

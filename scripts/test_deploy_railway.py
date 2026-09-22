@@ -63,23 +63,27 @@ class DeploymentTests(unittest.TestCase):
     def test_tracks_id_returned_by_deployment_request(self, api, wait):
         api.side_effect = [
             {"serviceInstance": {"healthcheckPath": "/health", "source": {"image": "image:latest"}}},
+            {"serviceInstanceUpdate": True},
             {"serviceInstanceDeployV2": "new-deployment"},
         ]
-        deploy.deploy("service", "environment", "https://example.test/health")
+        deploy.deploy("service", "environment", "https://example.test/health", "example/service:build-42.1")
         wait.assert_called_once_with("new-deployment", "https://example.test/health")
+        self.assertEqual(api.call_args_list[1].args[0], deploy.UPDATE_IMAGE_MUTATION)
+        self.assertEqual(api.call_args_list[1].args[1]["image"], "example/service:build-42.1")
+        self.assertEqual(api.call_args_list[2].args[0], deploy.DEPLOY_MUTATION)
 
     @patch.object(deploy, "railway_api")
     def test_missing_health_check_prevents_deployment(self, api):
         api.return_value = {"serviceInstance": {"healthcheckPath": None, "source": {"image": "image"}}}
         with self.assertRaises(RuntimeError):
-            deploy.deploy("service", "environment", "https://example.test/health")
+            deploy.deploy("service", "environment", "https://example.test/health", "example/service:build-42.1")
         self.assertEqual(api.call_count, 1)
 
     @patch.object(deploy, "railway_api")
     def test_missing_image_source_prevents_deployment(self, api):
         api.return_value = {"serviceInstance": {"healthcheckPath": "/health", "source": None}}
         with self.assertRaises(RuntimeError):
-            deploy.deploy("service", "environment", "https://example.test/health")
+            deploy.deploy("service", "environment", "https://example.test/health", "example/service:build-42.1")
         self.assertEqual(api.call_count, 1)
 
     @patch.object(deploy.subprocess, "run")
@@ -100,3 +104,20 @@ class DeploymentTests(unittest.TestCase):
                 self.assertEqual(deploy.health_is_up("https://example.test/health"), expected)
         urlopen.side_effect = urllib.error.URLError("unreachable")
         self.assertFalse(deploy.health_is_up("https://example.test/health"))
+
+    @patch.object(deploy, "railway_api")
+    def test_unversioned_image_is_rejected_before_api_calls(self, api):
+        for image in ["example/service", "example/service:", "example/service:latest"]:
+            with self.subTest(image=image), self.assertRaises(RuntimeError):
+                deploy.deploy("service", "environment", "https://example.test/health", image)
+        api.assert_not_called()
+
+    @patch.object(deploy, "railway_api")
+    def test_failed_image_update_prevents_deployment(self, api):
+        api.side_effect = [
+            {"serviceInstance": {"healthcheckPath": "/health", "source": {"image": "old-image"}}},
+            {"serviceInstanceUpdate": False},
+        ]
+        with self.assertRaises(RuntimeError):
+            deploy.deploy("service", "environment", "https://example.test/health", "example/service:build-42.1")
+        self.assertEqual(api.call_count, 2)
