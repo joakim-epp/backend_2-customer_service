@@ -30,9 +30,6 @@ jobs:
           cache: maven
 
       - name: Test deployment verification
-        run: python3 -m unittest discover -s scripts -p 'test_*.py'
-
-      - name: Test Java deployment helper
         run: ./mvnw --batch-mode --no-transfer-progress -f scripts/railway-deploy/pom.xml verify
 
       - name: Run tests
@@ -97,8 +94,17 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
       - name: Install Railway CLI
         run: npm install --global @railway/cli@5.49.0
+
+      - name: Build deployment helper
+        run: ./mvnw --batch-mode --no-transfer-progress -f scripts/railway-deploy/pom.xml -DskipTests package
 
       - name: Deploy image and verify health
         env:
@@ -107,4 +113,4 @@ jobs:
           RAILWAY_SERVICE_ID: 01d033ee-8c01-4c9b-9bd9-65c5ee45afe2
           RAILWAY_ENVIRONMENT_ID: 685d7dbd-8e4b-4dbf-ac2b-42496851452e
           RAILWAY_HEALTH_URL: https://customer-service-production-ff17.up.railway.app/actuator/health
-        run: python3 scripts/deploy_railway.py
+        run: java -jar scripts/railway-deploy/target/railway-deploy-jar-with-dependencies.jar
