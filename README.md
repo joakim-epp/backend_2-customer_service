@@ -213,3 +213,22 @@ blir aldrig föräldralös, eftersom namnet fortfarande går att slå upp.
 
 Priset är att "radera" inte betyder att uppgifterna är borta ur databasen. Ska de bort på
 riktigt måste raden tömmas eller anonymiseras.
+
+### Versioner och verifiering av Railway-deploy
+
+Varje push till `main` publicerar en Docker-image med taggen
+`build-<run_number>.<run_attempt>`, till exempel `build-42.1`. En omkörning av imagebygget får en ny
+tag, till exempel `build-42.2`. Versionen visas i körningens sammanfattning i GitHub
+Actions. Imagen har också versions- och commitinformation i sina OCI-labels.
+
+CI uppdaterar Railway till den publicerade versionen, startar en deploy och väntar på just
+det deployment-ID som API:t returnerar. Jobbet kräver en konfigurerad hälsokontroll
+i Railway, status `SUCCESS` för den nya deployen och svaret `UP` från tjänstens
+publika `/actuator/health`. Felaktiga eller avbrutna deployer och en väntetid över
+tio minuter gör att jobbet misslyckas.
+
+Kontrollerna för deployskriptet körs utan Railway-token:
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```
