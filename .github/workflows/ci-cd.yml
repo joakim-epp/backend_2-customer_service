@@ -32,6 +32,9 @@ jobs:
       - name: Test deployment verification
         run: python3 -m unittest discover -s scripts -p 'test_*.py'
 
+      - name: Test Java deployment helper
+        run: ./mvnw --batch-mode --no-transfer-progress -f scripts/railway-deploy/pom.xml verify
+
       - name: Run tests
         run: ./mvnw --batch-mode --no-transfer-progress verify
 
