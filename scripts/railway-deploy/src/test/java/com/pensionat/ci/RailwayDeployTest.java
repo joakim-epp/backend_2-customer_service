@@ -50,6 +50,23 @@ class RailwayDeployTest {
         assertEquals(0, deploy.healthCalls);
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {"INITIALIZING", "BUILDING", "DEPLOYING"})
+    void waitsForStartupWhileDeploymentIsStopped(String state) throws Exception {
+        deploy.replies.addAll(List.of(status(state, true, "new-id"), status("SUCCESS", false, "new-id")));
+        deploy.waitForDeployment("new-id", URL);
+        assertEquals(2, deploy.queries.size());
+        assertEquals(1, deploy.healthCalls);
+    }
+
+    @Test void startupStillTimesOutWhenDeploymentNeverRuns() {
+        deploy.replies.add(status("INITIALIZING", true, "new-id"));
+        var error = assertThrows(IllegalStateException.class, () -> deploy.waitForDeployment("new-id", URL));
+        assertTrue(error.getMessage().contains("within 600s"));
+        assertEquals(120, deploy.queries.size());
+        assertEquals(0, deploy.healthCalls);
+    }
+
     @Test void previousDeploymentCannotPass() {
         deploy.replies.add(status("SUCCESS", false, "old-id"));
         assertThrows(IllegalStateException.class, () -> deploy.waitForDeployment("new-id", URL));

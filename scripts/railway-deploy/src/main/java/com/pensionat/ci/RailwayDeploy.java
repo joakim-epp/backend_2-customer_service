@@ -91,7 +91,9 @@ public class RailwayDeploy {
             String status = deployment.path("status").asText();
             if (!status.equals(previous)) System.out.println("Deployment " + id + ": " + status);
             previous = status;
-            if (FAILURES.contains(status) || deployment.path("deploymentStopped").asBoolean()) {
+            // Railway can report deploymentStopped while the deployment is still starting.
+            if (FAILURES.contains(status)
+                    || (status.equals("SUCCESS") && deployment.path("deploymentStopped").asBoolean())) {
                 throw new IllegalStateException("Deployment " + id + " failed: " + status);
             }
             if (status.equals("SUCCESS") && deployment.path("deploymentStopped").isBoolean()
