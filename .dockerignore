@@ -1,5 +1,4 @@
 target/
-scripts/railway-deploy/target/
 .git/
 # Never send local environment files to the image builder, including nested files.
 **/.env
