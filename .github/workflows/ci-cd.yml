@@ -34,8 +34,6 @@ jobs:
 
   image:
     needs: test
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
 
@@ -71,7 +69,9 @@ jobs:
           context: .
           push: true
           platforms: linux/amd64
-          tags: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ steps.version.outputs.version }}
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:production
           labels: |
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
@@ -89,33 +89,12 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - name: Install Railway CLI
-        run: npm install --global @railway/cli@5.49.0
-
-      - name: Start Railway deployment
-        shell: bash
+      - name: Deploy from Docker Hub
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/${{ env.IMAGE_NAME }}:${{ needs.image.outputs.version }}
           RAILWAY_SERVICE_ID: 01d033ee-8c01-4c9b-9bd9-65c5ee45afe2
-          RAILWAY_ENVIRONMENT_ID: 685d7dbd-8e4b-4dbf-ac2b-42496851452e
         run: |
-          selectors=(--compact --raw-var "serviceId=$RAILWAY_SERVICE_ID"
-                     --raw-var "environmentId=$RAILWAY_ENVIRONMENT_ID")
-
-          # GraphQL variables must reach Railway without shell expansion.
-          # shellcheck disable=SC2016
-          railway api '
-            mutation($serviceId: String!, $environmentId: String!, $image: String!) {
-              serviceInstanceUpdate(serviceId: $serviceId, environmentId: $environmentId,
-                                    input: {source: {image: $image}})
-            }' "${selectors[@]}" --raw-var "image=$RAILWAY_IMAGE" |
-            jq -e '.data.serviceInstanceUpdate == true' > /dev/null
-
-          # shellcheck disable=SC2016
-          deployment_id=$(railway api '
-            mutation($serviceId: String!, $environmentId: String!) {
-              serviceInstanceDeployV2(serviceId: $serviceId, environmentId: $environmentId)
-            }' "${selectors[@]}" |
-            jq -er '.data.serviceInstanceDeployV2 | select(type == "string" and length > 0)')
-          echo "Railway accepted deployment $deployment_id for $RAILWAY_IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          npx --yes @railway/cli@5.49.0 redeploy \
+            --from-source \
+            --service "$RAILWAY_SERVICE_ID" \
+            --yes
