@@ -219,16 +219,19 @@ riktigt måste raden tömmas eller anonymiseras.
 Varje push till `main` publicerar en Docker-image med taggen
 `build-<run_number>.<run_attempt>`, till exempel `build-42.1`. En omkörning av imagebygget får en ny
 tag, till exempel `build-42.2`. Versionen visas i körningens sammanfattning i GitHub
-Actions. Imagen har också versions- och commitinformation i sina OCI-labels.
+Actions. Samma image publiceras även med taggen `production`, som uppdateras vid
+varje godkänt bygge på `main`. Imagen har versions- och commitinformation i sina OCI-labels.
 
 CD körs direkt i [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml).
-Steget `Start Railway deployment` använder Railway CLI för att välja den publicerade
-Docker-versionen och starta en deployment. Jobbet blir godkänt när Railway accepterar
-anropet och returnerar ett deployment-ID. Avvisade anrop gör att jobbet misslyckas.
+Railways imagekälla ska vara `joakimepp/customer-service:production`.
+Efter publiceringen kör steget `Deploy from Docker Hub` kommandot
+`railway redeploy --from-source --service "$RAILWAY_SERVICE_ID" --yes`.
+Railway hämtar då den senaste imagen från den konfigurerade källan.
 
-Pipelinen väntar inte på att tjänsten startar och anropar inte `/actuator/health`.
-Railways egen hälsokontroll finns kvar. Kontrollera slutlig deploymentstatus i Railway
-och öppna tjänstens publika adress för att visa att den körs.
+Jobbet blir godkänt när Railway accepterar deployanropet. Avvisade anrop gör att
+jobbet misslyckas. Pipelinen väntar inte på att tjänsten startar och anropar inte
+`/actuator/health`. Railways egen hälsokontroll finns kvar. Kontrollera slutlig
+deploymentstatus i Railway och öppna tjänstens publika adress för att visa att den körs.
 
 Hemligheten `RAILWAY_TOKEN` hämtas från GitHub Secrets. Ingen Java-kod behöver byggas
 för deployment.
