@@ -214,24 +214,21 @@ blir aldrig föräldralös, eftersom namnet fortfarande går att slå upp.
 Priset är att "radera" inte betyder att uppgifterna är borta ur databasen. Ska de bort på
 riktigt måste raden tömmas eller anonymiseras.
 
-### Versioner och verifiering av Railway-deploy
+### Versioner och Railway-deploy
 
 Varje push till `main` publicerar en Docker-image med taggen
 `build-<run_number>.<run_attempt>`, till exempel `build-42.1`. En omkörning av imagebygget får en ny
 tag, till exempel `build-42.2`. Versionen visas i körningens sammanfattning i GitHub
 Actions. Imagen har också versions- och commitinformation i sina OCI-labels.
 
-CI uppdaterar Railway till den publicerade versionen, startar en deploy och väntar på just
-det deployment-ID som API:t returnerar. Jobbet kräver en konfigurerad hälsokontroll
-i Railway, status `SUCCESS` för den nya deployen och svaret `UP` från tjänstens
-publika `/actuator/health`. Felaktiga eller avbrutna deployer och en väntetid över
-tio minuter gör att jobbet misslyckas.
+CD körs direkt i [.github/workflows/ci-cd.yml](.github/workflows/ci-cd.yml).
+Steget `Start Railway deployment` använder Railway CLI för att välja den publicerade
+Docker-versionen och starta en deployment. Jobbet blir godkänt när Railway accepterar
+anropet och returnerar ett deployment-ID. Avvisade anrop gör att jobbet misslyckas.
 
-Deployverktyget är skrivet i Java 21 och byggs separat från applikationen.
-JUnit-testerna körs utan Railway-token eller databas:
+Pipelinen väntar inte på att tjänsten startar och anropar inte `/actuator/health`.
+Railways egen hälsokontroll finns kvar. Kontrollera slutlig deploymentstatus i Railway
+och öppna tjänstens publika adress för att visa att den körs.
 
-```bash
-./mvnw --batch-mode --no-transfer-progress -f scripts/railway-deploy/pom.xml verify
-```
-
-Källkod och körinstruktioner finns i [scripts/railway-deploy](scripts/railway-deploy).
+Hemligheten `RAILWAY_TOKEN` hämtas från GitHub Secrets. Ingen Java-kod behöver byggas
+för deployment.
